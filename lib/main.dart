@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter_custom_clippers/flutter_custom_clippers.dart';
 
 void main() => runApp(MaterialApp(
       home: Galaxy(),
@@ -12,19 +13,17 @@ class Galaxy extends StatefulWidget {
   _GalaxyState createState() => _GalaxyState();
 }
 
-class _GalaxyState extends State<Galaxy> with SingleTickerProviderStateMixin {
+class _GalaxyState extends State<Galaxy>  {
   double _angle;
-  AnimationController _fireController;
-  double shipPositionX = 0;
-  double shipPositionY = 0;
   double angleDelta;
   double _radius = -550;
+  double shipSize = 550;
 
   void shipRadius() {
     Timer.periodic(Duration(milliseconds: 100), (Timer t) {
       setState(() {
         _radius == 0 ? _radius = -550 : _radius++;
-        print(_radius);
+        shipSize == 0 ? shipSize = 550 : shipSize--;
       });
     });
   }
@@ -33,8 +32,6 @@ class _GalaxyState extends State<Galaxy> with SingleTickerProviderStateMixin {
     Timer.periodic(Duration(milliseconds: 20), (Timer t) {
       setState(() {
         _angle == 360 ? _angle = 0 : _angle++;
-
-        print(_radius);
         angleDelta++;
       });
     });
@@ -47,23 +44,6 @@ class _GalaxyState extends State<Galaxy> with SingleTickerProviderStateMixin {
     _angle = 0;
     clock();
     shipRadius();
-    _fireController = AnimationController(
-      vsync: this,
-      lowerBound: 0.0,
-      upperBound: 1.0,
-      duration: Duration(milliseconds: 7200),
-    )
-      ..addListener(() {
-        this.setState(() {});
-      })
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          _fireController.reverse();
-        } else if (status == AnimationStatus.dismissed) {
-          _fireController.forward();
-        }
-      });
-    _fireController.forward();
 
     super.initState();
   }
@@ -89,11 +69,30 @@ class _GalaxyState extends State<Galaxy> with SingleTickerProviderStateMixin {
             left: _width / 2 - 20,
             top: _height / 2 - 20,
             child: MyRadialPosition(
+              radius: _radius - 90,
+              angle: angleDelta * 3.142 / 90,
+              child:
+                  Transform.rotate(angle: _angle, child: _circle(shipSize / 2)),
+            ),
+          ),
+          Positioned(
+            left: _width / 2 - 20,
+            top: _height / 2 - 20,
+            child: MyRadialPosition(
               radius: _radius,
-              angle: angleDelta * 3.142 / 180.0,
-
-              /// Gesture Detector
-              child: _ship(_fireController, _angle),
+              angle: angleDelta * 3.142 / 70,
+              child:
+                  Transform.rotate(angle: _angle, child: _starr(shipSize / 4)),
+            ),
+          ),
+          Positioned(
+            left: _width / 2 - 20,
+            top: _height / 2 - 20,
+            child: MyRadialPosition(
+              radius: _radius,
+              angle: angleDelta * 3.142 / 60,
+              child: Transform.rotate(
+                  angle: _angle, child: _triangle(shipSize / 4)),
             ),
           ),
         ],
@@ -130,37 +129,36 @@ Widget blackHole(double _angle) {
   );
 }
 
-Widget _ship(AnimationController _controller, double _angle) {
-  return AnimatedBuilder(
-    animation:
-        CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    builder: (context, child) {
-      return Stack(
-        alignment: Alignment.center,
-        children: <Widget>[
-          Transform.rotate(
-              angle: _angle,
-              child: _buildContainer(300 * _controller.value, _controller)),
-          //_buildContainer(200 * _controller.value, _controller),
-          //_buildContainer(300 * _controller.value, _controller),
-          //_buildContainer(400 * _controller.value, _controller),
-          //_buildContainer(500 * _controller.value, _controller),
-          Align(child: Container()),
-        ],
-      );
-    },
+Widget _circle(double _size) {
+  return Container(
+    width: _size,
+    height: _size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.grey,
+    ),
   );
 }
 
-Widget _buildContainer(double radius, AnimationController _controller) {
-  return Container(
-    width: radius,
-    height: radius,
-    decoration: BoxDecoration(
-      shape: BoxShape.rectangle,
-      color: Colors.redAccent.shade700.withOpacity(1 - _controller.value),
+Widget _starr(double shipSize) {
+  return ClipPath(
+    clipper: StarClipper(5),
+    child: Container(
+      width: shipSize,
+      height: shipSize,
+      color: Colors.amber,
     ),
   );
+}
+
+Widget _triangle(double shipSize) {
+  return ClipPath(
+      clipper: TriangleClipper(),
+      child: Container(
+        width: shipSize,
+        height: shipSize,
+        color: Colors.blueAccent,
+      ));
 }
 
 class Stars extends CustomPainter {
@@ -174,14 +172,6 @@ class Stars extends CustomPainter {
     final points = [
       Offset(_random.nextInt(size.width.round()).toDouble(),
           _random.nextInt(size.height.round()).toDouble()),
-      // Offset(
-      // 150, 75),
-      // Offset(
-      //   250, 250),
-      //Offset(
-      // 130, 200),
-      // Offset(
-      //      270, 100),
     ];
     void draw(double _strokeWidth) {
       final paint = Paint()
